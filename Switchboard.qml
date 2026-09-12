@@ -29,7 +29,14 @@ Item {
   property string omarchyPath: Quickshell.env("OMARCHY_PATH")
   property var shell: null
   property var manifest: null
-  readonly property string pluginDir: manifest && manifest.__sourceDir ? String(manifest.__sourceDir) : ""
+  // The injected manifest is the public copy, which strips __sourceDir, so
+  // locate the plugin's scripts/ from this QML file's own URL instead.
+  readonly property string pluginDir: {
+    var fromManifest = manifest && manifest.__sourceDir ? String(manifest.__sourceDir) : ""
+    if (fromManifest) return fromManifest
+    var url = String(Qt.resolvedUrl("."))
+    return url.length > 0 && url.indexOf("file://") === 0 ? url.slice(7) : ""
+  }
 
   // --------------------------------------------------------------- lifecycle
 
