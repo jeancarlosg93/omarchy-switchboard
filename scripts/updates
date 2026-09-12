@@ -1,6 +1,10 @@
 #!/bin/bash
 # Prints the number of pending Omarchy updates (0 when up to date).
 set -uo pipefail
-count=$(omarchy-update-available 2>/dev/null | grep -c . || true)
+if output=$(omarchy-update-available 2>/dev/null); then
+  count=$(printf '%s\n' "$output" | grep -c . || true)
+else
+  count=0
+fi
 printf '%s\n' "${count:-0}"
 exit 0

@@ -4,6 +4,6 @@
 # can take a few seconds.
 set -uo pipefail
 theme=$(omarchy-theme-current 2>/dev/null || true)
-version=$(cat "${OMARCHY_PATH:-/usr/share/omarchy}/version" 2>/dev/null || true)
+version=$(omarchy-version 2>/dev/null || true)
 printf 'theme\t%s\nversion\t%s\n' "$theme" "$version"
 exit 0
