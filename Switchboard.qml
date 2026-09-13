@@ -67,6 +67,21 @@ Item {
 
   function ping() { return "ok" }
 
+  function appMonogram(label) {
+    var words = String(label || "").replace(/([a-z])([A-Z])/g, "$1 $2").trim().split(/[\s._-]+/)
+    var first = Array.from(words[0] || "")[0] || "?"
+    var last = words.length > 1 ? (Array.from(words[words.length - 1])[0] || "") : ""
+    return (first + last).toUpperCase()
+  }
+
+  function appMonogramColor(appId) {
+    var hash = 0
+    var value = String(appId || "")
+    for (var i = 0; i < value.length; i++) hash = (hash * 31 + value.charCodeAt(i)) | 0
+    // A stable hue per desktop ID, with a dark background for white lettering.
+    return Qt.hsla((hash >>> 0) % 360 / 360, 0.48, 0.28, 1)
+  }
+
   // ---------------------------------------------------------------- tunables
 
   readonly property int keybindRefreshSeconds: 30
@@ -1609,7 +1624,8 @@ Item {
                 }
 
                 Image {
-                  visible: tile.isApp
+                  id: appImage
+                  visible: tile.isApp && status === Image.Ready
                   width: Style.font.iconLarge
                   height: Style.font.iconLarge
                   fillMode: Image.PreserveAspectFit
@@ -1620,6 +1636,28 @@ Item {
                   anchors.left: iconText.left
                   anchors.leftMargin: (Style.space(24) - width) / 2
                   anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Rectangle {
+                  // Keep the slot filled while loading, and retain the badge
+                  // for missing or broken icons without retrying failed URLs.
+                  visible: tile.isApp && appImage.status !== Image.Ready
+                  anchors.centerIn: appImage
+                  width: appImage.width
+                  height: appImage.height
+                  radius: width * 0.22
+                  color: root.appMonogramColor(tile.appId || tile.label)
+
+                  Text {
+                    anchors.fill: parent
+                    text: root.appMonogram(tile.label)
+                    color: "#ffffff"
+                    font.family: root.fontFamily
+                    font.pixelSize: parent.height * (text.length > 1 ? 0.46 : 0.6)
+                    font.weight: Font.DemiBold
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                  }
                 }
 
                 Column {
