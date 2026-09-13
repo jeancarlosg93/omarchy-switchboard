@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "krall.switchboard",
   "name": "Switchboard",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "author": "Ben Krall",
   "license": "MIT",
   "description": "Grid-style Omarchy launcher with live search, arrow navigation, and global shortcut hints.",

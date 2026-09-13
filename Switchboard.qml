@@ -133,7 +133,19 @@ Item {
   property string versionText: ""
   property int updateCount: 0
 
-  readonly property var appLibrary: root.shell ? root.shell.appLibrary : null
+  // Some shell versions leave third-party menus without an injected shell
+  // API. Instantiate the packaged library in that case to retain the same
+  // app filtering, icons, launch feedback, and removal behavior.
+  readonly property var sharedAppLibrary: root.shell ? root.shell.appLibrary : null
+  readonly property var appLibrary: sharedAppLibrary || fallbackAppLibrary.item
+  Loader {
+    id: fallbackAppLibrary
+    active: !root.sharedAppLibrary
+    source: root.omarchyPath + "/shell/services/AppLibrary.qml"
+  }
+  onAppLibraryChanged: {
+    if (root.rowsLoaded && root.appLibrary) root.mergeAppRows()
+  }
   property bool deleteConfirmOpen: false
   property var deleteTarget: null
   onOpenedChanged: if (!opened) { deleteConfirmOpen = false; deleteTarget = null }
@@ -306,7 +318,7 @@ Item {
   // Searching from the root spans Apps, so app rows are needed before the
   // user ever enters Apps. Loading them is a one-time in-memory merge.
   function ensureAppRows() {
-    if (root.providersLoaded["apps"]) return
+    if (!root.appLibrary || root.providersLoaded["apps"]) return
     root.providersLoaded["apps"] = true
     root.mergeAppRows()
   }
