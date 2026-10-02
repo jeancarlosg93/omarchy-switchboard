@@ -68,6 +68,11 @@ Item {
 
   function ping() { return "ok" }
 
+  function scaleInfo() {
+    return JSON.stringify({ scale: root.uiScale, cardWidth: root.cardWidth,
+      bodySize: root.scaledSize(Style.font.body) })
+  }
+
   function appMonogram(label) {
     var words = String(label || "").replace(/([a-z])([A-Z])/g, "$1 $2").trim().split(/[\s._-]+/)
     var first = Array.from(words[0] || "")[0] || "?"
@@ -83,12 +88,29 @@ Item {
     return Qt.hsla((hash >>> 0) % 360 / 360, 0.48, 0.28, 1)
   }
 
-  // Per-plugin settings use the existing shell.json bar entry. The shell
-  // supplies a reactive public barConfig snapshot, so no extra config file or
-  // reader is needed. Scale only this launcher, leaving its bar button alone.
-  readonly property real uiScale: UiScale.fromBarConfig(
-    root.shell ? root.shell.barConfig : null,
-    root.manifest && root.manifest.id ? root.manifest.id : "krall.switchboard")
+  // Read the existing shell.json entry; no separate plugin config file.
+  // Some shell versions do not inject a persistent API into menu plugins.
+  property var fallbackBarConfig: ({})
+  readonly property var scaleBarConfig: root.shell && root.shell.barConfig
+    ? root.shell.barConfig : root.fallbackBarConfig
+  readonly property real uiScale: UiScale.fromBarConfig(root.scaleBarConfig, "krall.switchboard")
+
+  function loadScaleConfig(text) {
+    try {
+      var config = text.length <= 1024 * 1024 ? JSON.parse(text) : null
+      root.fallbackBarConfig = config && config.version === 1 ? config.bar || ({}) : ({})
+    } catch (e) { root.fallbackBarConfig = ({}) }
+  }
+
+  FileView {
+    id: scaleConfigFile
+    path: Quickshell.env("HOME") + "/.config/omarchy/shell.json"
+    watchChanges: true
+    printErrors: false
+    onLoaded: root.loadScaleConfig(text())
+    onFileChanged: reload()
+    onLoadFailed: root.fallbackBarConfig = ({})
+  }
 
   function scaledSize(px) { return UiScale.size(px, root.uiScale) }
   function scaledSpace(px) { return root.scaledSize(Style.space(px)) }

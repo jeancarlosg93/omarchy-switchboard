@@ -87,10 +87,12 @@ spacing, tiles, and card width. It leaves the bar button and other shell panels
 unchanged. Omit `scale` or use `1` for the original size. Numeric values are
 limited to `0.75`–`2`; invalid values fall back to `1`.
 
-The setting applies live through Omarchy's injected bar configuration. There is
+The setting applies live through Omarchy's injected bar configuration, with a
+watched read of the same `shell.json` as a fallback on older shells. There is
 no separate Switchboard configuration file. Existing theme sizes remain the
 base; the card still fits within the screen and long menus scroll. With no bar
-entry or on a shell without the public `barConfig` API, the original size is used.
+entry, the original size is used. Restart the shell once after installing this
+fork so its new JavaScript module is loaded; subsequent scale changes apply live.
 
 ## Keys
 
@@ -180,3 +182,6 @@ below it, so a full launcher sits centred).
 ## License
 
 MIT. `MenuModel.js` is from Omarchy, also MIT.
+
+Run the configuration tests with `node tests/ui-scale.cjs`. For runtime checks,
+use `omarchy-shell shell call krall.switchboard scaleInfo ""`.
