@@ -23,3 +23,15 @@ assert.equal(scale.size(680, 1.2), 816);
 assert.equal(scale.size(12, 1.2), 14);
 for (const px of [0, 1, 4, 12, 680]) assert.equal(scale.size(px, 1), px);
 console.log('UI scale: configuration, fallback, limits, and dimensions passed');
+
+for (const section of ['left', 'center', 'right']) {
+  const config = {layout: {[section]: [{id, verticalAlignment: 'center'}]}};
+  assert.equal(scale.alignmentFromBarConfig(config, id), 'center');
+  config.layout[section][0].verticalAlignment = 'top';
+  assert.equal(scale.alignmentFromBarConfig(config, id), 'top');
+}
+for (const value of [undefined, null, false, 'bottom', 'CENTER', 1]) {
+  assert.equal(scale.alignmentFromBarConfig({layout: {left: [{id, verticalAlignment: value}]}}, id), 'top');
+}
+assert.equal(scale.alignmentFromBarConfig(null, id), 'top');
+console.log('Vertical alignment: explicit center and original-position fallback passed');

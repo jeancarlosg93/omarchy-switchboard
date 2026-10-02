@@ -70,7 +70,8 @@ Item {
 
   function scaleInfo() {
     return JSON.stringify({ scale: root.uiScale, cardWidth: root.cardWidth,
-      bodySize: root.scaledSize(Style.font.body) })
+      bodySize: root.scaledSize(Style.font.body), verticalAlignment: root.verticalAlignment,
+      cardY: card.y, cardHeight: card.height, screenHeight: panel.height })
   }
 
   function appMonogram(label) {
@@ -94,6 +95,8 @@ Item {
   readonly property var scaleBarConfig: root.shell && root.shell.barConfig
     ? root.shell.barConfig : root.fallbackBarConfig
   readonly property real uiScale: UiScale.fromBarConfig(root.scaleBarConfig, "krall.switchboard")
+
+  readonly property string verticalAlignment: UiScale.alignmentFromBarConfig(root.scaleBarConfig, "krall.switchboard")
 
   function loadScaleConfig(text) {
     try {
@@ -251,7 +254,7 @@ Item {
   readonly property int availableGridHeight: {
     var serial = root.layoutSerial
     // Symmetric: a full-height card leaves the same gap below as above.
-    var available = panel.height - panel.cardTop * 2 - root.chromeHeight
+    var available = panel.height - panel.contentInset * 2 - root.chromeHeight
     if (root.dmenuActive && root.dmenuMaxHeight > 0) available = Math.min(available, root.scaledSpace(root.dmenuMaxHeight))
     return Math.max(root.baseTileHeight, available)
   }
@@ -1339,9 +1342,11 @@ Item {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
 
-    // The card hangs from a fixed line in the upper part of the screen and
-    // grows downward, so moving between menus never makes it jump.
-    readonly property int cardTop: Math.max(Style.gapsOut, Math.round(height * 0.20))
+    // Preserve the fixed top edge by default. Centered mode reserves only
+    // screen-edge gaps, letting the card grow equally upward and downward.
+    // Keep the height limit independent of card.y to avoid a binding loop.
+    readonly property int contentInset: root.verticalAlignment === "center"
+      ? Style.gapsOut : Math.max(Style.gapsOut, Math.round(height * 0.20))
 
     Rectangle {
       anchors.fill: parent
@@ -1356,10 +1361,10 @@ Item {
     BorderSurface {
       id: card
       width: root.cardWidth
-      height: Math.min(root.cardHeight, panel.height - Style.gapsOut - panel.cardTop)
+      height: Math.min(root.cardHeight, panel.height - Style.gapsOut - panel.contentInset)
       radius: root.cornerRadius
       anchors.horizontalCenter: parent.horizontalCenter
-      y: panel.cardTop
+      y: root.verticalAlignment === "center" ? (panel.height - height) / 2 : panel.contentInset
       color: root.background
       borderSpec: root.borderSpec
       padding: root.contentMargin

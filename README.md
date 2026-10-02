@@ -73,7 +73,7 @@ answers the `select` / `input` requests that `omarchy menu select` and other
 scripts send. Theme colors, fonts, radius and spacing all come from the
 theme's `[menu]` tokens, so every theme already styles it.
 
-## Launcher size
+## Launcher size and position
 
 Set `scale` on Switchboard's existing bar layout entry in
 `~/.config/omarchy/shell.json`, keeping its current section and position:
@@ -93,6 +93,18 @@ no separate Switchboard configuration file. Existing theme sizes remain the
 base; the card still fits within the screen and long menus scroll. With no bar
 entry, the original size is used. Restart the shell once after installing this
 fork so its new JavaScript module is loaded; subsequent scale changes apply live.
+
+To keep the card centered vertically as its content changes, add
+`verticalAlignment: "center"` to the same entry:
+
+```json
+{ "id": "krall.switchboard", "scale": 1.2, "verticalAlignment": "center" }
+```
+
+Omit `verticalAlignment` or use `"top"` to preserve the original fixed upper
+position. Centered mode grows equally upward and downward, stays centered
+while searching or opening submenus, and scrolls when the screen is full.
+The setting applies live and also covers select/input dialogs.
 
 ## Keys
 
