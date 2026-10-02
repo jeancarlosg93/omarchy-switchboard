@@ -13,7 +13,7 @@ need it.
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/krall12/omarchy-switchboard.git
+omarchy plugin add https://github.com/jeancarlosg93/omarchy-switchboard.git
 omarchy plugin enable krall.switchboard
 ```
 
@@ -72,6 +72,25 @@ including `when:` / `checked:` guards, providers, and your own entries. It
 answers the `select` / `input` requests that `omarchy menu select` and other
 scripts send. Theme colors, fonts, radius and spacing all come from the
 theme's `[menu]` tokens, so every theme already styles it.
+
+## Launcher size
+
+Set `scale` on Switchboard's existing bar layout entry in
+`~/.config/omarchy/shell.json`, keeping its current section and position:
+
+```json
+{ "id": "krall.switchboard", "scale": 1.2 }
+```
+
+`1.2` makes the launcher approximately 20% larger, including text, icons,
+spacing, tiles, and card width. It leaves the bar button and other shell panels
+unchanged. Omit `scale` or use `1` for the original size. Numeric values are
+limited to `0.75`–`2`; invalid values fall back to `1`.
+
+The setting applies live through Omarchy's injected bar configuration. There is
+no separate Switchboard configuration file. Existing theme sizes remain the
+base; the card still fits within the screen and long menus scroll. With no bar
+entry or on a shell without the public `barConfig` API, the original size is used.
 
 ## Keys
 

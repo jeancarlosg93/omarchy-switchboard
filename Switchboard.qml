@@ -6,6 +6,7 @@ import qs.Commons
 import qs.Ui
 import "MenuModel.js" as MenuModel
 import "Keybinds.js" as Keybinds
+import "UiScale.js" as UiScale
 
 // Switchboard — a grid launcher for Omarchy.
 //
@@ -80,6 +81,26 @@ Item {
     for (var i = 0; i < value.length; i++) hash = (hash * 31 + value.charCodeAt(i)) | 0
     // A stable hue per desktop ID, with a dark background for white lettering.
     return Qt.hsla((hash >>> 0) % 360 / 360, 0.48, 0.28, 1)
+  }
+
+  // Per-plugin settings use the existing shell.json bar entry. The shell
+  // supplies a reactive public barConfig snapshot, so no extra config file or
+  // reader is needed. Scale only this launcher, leaving its bar button alone.
+  readonly property real uiScale: UiScale.fromBarConfig(
+    root.shell ? root.shell.barConfig : null,
+    root.manifest && root.manifest.id ? root.manifest.id : "krall.switchboard")
+
+  function scaledSize(px) { return UiScale.size(px, root.uiScale) }
+  function scaledSpace(px) { return root.scaledSize(Style.space(px)) }
+
+  // Row positions are stored in the model rather than bound to tileHeight.
+  // Coalesce changes so live resizing also relays out search and select rows.
+  onTileHeightChanged: Qt.callLater(root.relayoutDisplay)
+  onTileGapChanged: Qt.callLater(root.relayoutDisplay)
+  onDividerHeightChanged: Qt.callLater(root.relayoutDisplay)
+
+  function relayoutDisplay() {
+    if (root.rowsLoaded) root.rebuildDisplay()
   }
 
   // ---------------------------------------------------------------- tunables
@@ -173,34 +194,34 @@ Item {
   property color background: Color.menu.background
   property color foreground: Color.menu.text
   property color border: Color.menu.border
-  property var borderSpec: Border.surfaceSpec("menu", "border", border, Math.max(1, Style.space(2)))
+  property var borderSpec: Border.surfaceSpec("menu", "border", border, Math.max(1, root.scaledSpace(2)))
   property color scrim: Color.menu.scrim
   property color selectedBackground: Color.menu.selectedBackground
   property color selectedText: Color.menu.selectedText
   property color selectedBorder: Color.menu.selectedBorder
   property var selectedBorderSpec: Border.surfaceSpec("menu", "selected-border", selectedBorder, 0)
-  readonly property int cornerRadius: Style.cornerRadius
-  readonly property int tileRadius: Math.min(Style.cornerRadius, Style.space(10))
+  readonly property int cornerRadius: root.scaledSize(Style.cornerRadius)
+  readonly property int tileRadius: Math.min(root.cornerRadius, root.scaledSpace(10))
   readonly property real mutedOpacity: 0.5
 
   // ---------------------------------------------------------------- metrics
 
-  property int contentMargin: Style.spacing.panelPadding + Style.space(6)
-  property int contentSpacing: Style.space(10)
-  property int headerHeight: Math.max(Style.space(24), Style.font.title + Style.space(6))
-  property int searchHeight: Math.max(Style.space(38), Style.font.heading + Style.spacing.inputPaddingY * 2 + Style.space(6))
-  property int footerHeight: Math.max(Style.space(16), Style.font.caption + Style.space(4))
-  property int baseTileHeight: Math.max(Style.space(36), Style.font.body + Style.spacing.rowPaddingX * 2 - Style.space(4))
-  property int detailTileHeight: Math.max(Style.space(50), Style.font.body + Style.font.caption + Style.spacing.rowPaddingX * 2 - Style.space(4))
-  property int tileGap: Style.space(4)
-  property int dividerHeight: Style.space(28)
-  property int emptyHeight: Style.space(96)
+  property int contentMargin: root.scaledSize(Style.spacing.panelPadding) + root.scaledSpace(6)
+  property int contentSpacing: root.scaledSpace(10)
+  property int headerHeight: Math.max(root.scaledSpace(24), root.scaledSize(Style.font.title) + root.scaledSpace(6))
+  property int searchHeight: Math.max(root.scaledSpace(38), root.scaledSize(Style.font.heading) + root.scaledSize(Style.spacing.inputPaddingY) * 2 + root.scaledSpace(6))
+  property int footerHeight: Math.max(root.scaledSpace(16), root.scaledSize(Style.font.caption) + root.scaledSpace(4))
+  property int baseTileHeight: Math.max(root.scaledSpace(36), root.scaledSize(Style.font.body) + root.scaledSize(Style.spacing.rowPaddingX) * 2 - root.scaledSpace(4))
+  property int detailTileHeight: Math.max(root.scaledSpace(50), root.scaledSize(Style.font.body) + root.scaledSize(Style.font.caption) + root.scaledSize(Style.spacing.rowPaddingX) * 2 - root.scaledSpace(4))
+  property int tileGap: root.scaledSpace(4)
+  property int dividerHeight: root.scaledSpace(28)
+  property int emptyHeight: root.scaledSpace(96)
 
   readonly property bool detailRows: root.dmenuActive ? root.dmenuHasDetail : root.filterText.trim().length > 0
   property bool dmenuHasDetail: false
   readonly property int tileHeight: root.detailRows ? root.detailTileHeight : root.baseTileHeight
 
-  property int cardWidth: Math.min(root.dmenuActive ? Style.space(root.dmenuWidth) : Style.space(680), panel.width - Style.gapsOut * 2)
+  property int cardWidth: Math.min(root.dmenuActive ? root.scaledSpace(root.dmenuWidth) : root.scaledSpace(680), panel.width - Style.gapsOut * 2)
   readonly property int chromeHeight: contentMargin * 2 + headerHeight + contentSpacing + searchHeight
     + (root.mode === "input" ? 0 : contentSpacing) + contentSpacing + footerHeight
   readonly property int gridHeight: root.mode === "input" ? 0
@@ -209,7 +230,7 @@ Item {
     var serial = root.layoutSerial
     // Symmetric: a full-height card leaves the same gap below as above.
     var available = panel.height - panel.cardTop * 2 - root.chromeHeight
-    if (root.dmenuActive && root.dmenuMaxHeight > 0) available = Math.min(available, Style.space(root.dmenuMaxHeight))
+    if (root.dmenuActive && root.dmenuMaxHeight > 0) available = Math.min(available, root.scaledSpace(root.dmenuMaxHeight))
     return Math.max(root.baseTileHeight, available)
   }
   readonly property int cardHeight: root.chromeHeight + root.gridHeight
@@ -1430,20 +1451,20 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             text: ""
             font.family: "omarchy"
-            font.pixelSize: Style.font.icon
+            font.pixelSize: root.scaledSize(Style.font.icon)
             color: root.selectedText
           }
 
           Text {
             anchors.left: logo.right
-            anchors.leftMargin: Style.space(8)
+            anchors.leftMargin: root.scaledSpace(8)
             anchors.right: statusLabel.left
-            anchors.rightMargin: Style.space(12)
+            anchors.rightMargin: root.scaledSpace(12)
             anchors.verticalCenter: parent.verticalCenter
             text: root.headerTitle()
             color: root.foreground
             font.family: root.fontFamily
-            font.pixelSize: Style.font.title
+            font.pixelSize: root.scaledSize(Style.font.title)
             font.weight: Font.Medium
             elide: Text.ElideLeft
           }
@@ -1457,7 +1478,7 @@ Item {
             color: root.foreground
             opacity: root.mutedOpacity
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: root.scaledSize(Style.font.caption)
             elide: Text.ElideLeft
             horizontalAlignment: Text.AlignRight
           }
@@ -1476,36 +1497,36 @@ Item {
           Text {
             id: searchGlyph
             anchors.left: parent.left
-            anchors.leftMargin: Style.space(12)
+            anchors.leftMargin: root.scaledSpace(12)
             anchors.verticalCenter: parent.verticalCenter
             text: ""
             color: searchBox.active ? root.selectedText : root.foreground
             opacity: searchBox.active ? 1 : 0.6
             font.family: root.fontFamily
-            font.pixelSize: Style.font.title
+            font.pixelSize: root.scaledSize(Style.font.title)
           }
 
           Text {
             id: searchText
             anchors.left: searchGlyph.right
-            anchors.leftMargin: Style.space(10)
+            anchors.leftMargin: root.scaledSpace(10)
             anchors.right: parent.right
-            anchors.rightMargin: Style.space(12)
+            anchors.rightMargin: root.scaledSpace(12)
             anchors.verticalCenter: parent.verticalCenter
             text: root.filterText || root.searchPlaceholder()
             color: root.foreground
             opacity: root.filterText ? 1 : 0.45
             font.family: root.fontFamily
-            font.pixelSize: Style.font.heading
+            font.pixelSize: root.scaledSize(Style.font.heading)
             elide: Text.ElideRight
           }
 
           Rectangle {
             id: caret
             visible: true
-            x: searchText.x + (root.filterText ? Math.min(searchText.contentWidth, searchText.width) + Style.space(2) : 0)
-            width: Math.max(1, Style.space(2))
-            height: Style.font.heading + Style.space(4)
+            x: searchText.x + (root.filterText ? Math.min(searchText.contentWidth, searchText.width) + root.scaledSpace(2) : 0)
+            width: Math.max(1, root.scaledSpace(2))
+            height: root.scaledSize(Style.font.heading) + root.scaledSpace(4)
             anchors.verticalCenter: parent.verticalCenter
             color: root.selectedText
             SequentialAnimation on opacity {
@@ -1554,9 +1575,9 @@ Item {
                 Rectangle {
                   anchors.left: parent.left
                   anchors.right: dividerLabel.visible ? dividerLabel.left : parent.right
-                  anchors.rightMargin: dividerLabel.visible ? Style.space(10) : 0
+                  anchors.rightMargin: dividerLabel.visible ? root.scaledSpace(10) : 0
                   anchors.verticalCenter: parent.verticalCenter
-                  height: Style.spacing.hairline
+                  height: root.scaledSize(Style.spacing.hairline)
                   color: Util.alpha(root.foreground, 0.18)
                 }
 
@@ -1564,13 +1585,13 @@ Item {
                   id: dividerLabel
                   visible: label.length > 0
                   anchors.right: parent.right
-                  anchors.rightMargin: Style.space(6)
+                  anchors.rightMargin: root.scaledSpace(6)
                   anchors.verticalCenter: parent.verticalCenter
                   text: label
                   color: root.foreground
                   opacity: root.mutedOpacity
                   font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
+                  font.pixelSize: root.scaledSize(Style.font.caption)
                   font.letterSpacing: 1
                   font.capitalization: Font.AllUppercase
                 }
@@ -1614,27 +1635,27 @@ Item {
                   text: tile.icon
                   color: tile.textColor
                   font.family: tile.iconFont.length > 0 ? tile.iconFont : root.fontFamily
-                  font.pixelSize: Style.font.icon
-                  width: Style.space(24)
+                  font.pixelSize: root.scaledSize(Style.font.icon)
+                  width: root.scaledSpace(24)
                   horizontalAlignment: Text.AlignHCenter
                   verticalAlignment: Text.AlignVCenter
                   anchors.left: parent.left
-                  anchors.leftMargin: Style.space(10)
+                  anchors.leftMargin: root.scaledSpace(10)
                   anchors.verticalCenter: parent.verticalCenter
                 }
 
                 Image {
                   id: appImage
                   visible: tile.isApp && status === Image.Ready
-                  width: Style.font.iconLarge
-                  height: Style.font.iconLarge
+                  width: root.scaledSize(Style.font.iconLarge)
+                  height: root.scaledSize(Style.font.iconLarge)
                   fillMode: Image.PreserveAspectFit
                   sourceSize.width: width * Screen.devicePixelRatio
                   sourceSize.height: height * Screen.devicePixelRatio
                   source: tile.isApp && root.appLibrary ? root.appLibrary.iconSource(tile.appIcon) : ""
                   asynchronous: true
                   anchors.left: iconText.left
-                  anchors.leftMargin: (Style.space(24) - width) / 2
+                  anchors.leftMargin: (root.scaledSpace(24) - width) / 2
                   anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -1663,18 +1684,18 @@ Item {
                 Column {
                   id: labelColumn
                   anchors.left: tile.hasIcon ? iconText.right : parent.left
-                  anchors.leftMargin: tile.hasIcon ? Style.space(6) : Style.space(10)
+                  anchors.leftMargin: tile.hasIcon ? root.scaledSpace(6) : root.scaledSpace(10)
                   anchors.right: trail.left
-                  anchors.rightMargin: Style.space(6)
+                  anchors.rightMargin: root.scaledSpace(6)
                   anchors.verticalCenter: parent.verticalCenter
-                  spacing: Style.space(2)
+                  spacing: root.scaledSpace(2)
 
                   Text {
                     width: parent.width
                     text: tile.label
                     color: tile.textColor
                     font.family: root.fontFamily
-                    font.pixelSize: Style.font.body
+                    font.pixelSize: root.scaledSize(Style.font.body)
                     font.weight: Font.Medium
                     elide: Text.ElideRight
                   }
@@ -1686,7 +1707,7 @@ Item {
                     color: root.foreground
                     opacity: root.mutedOpacity
                     font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
+                    font.pixelSize: root.scaledSize(Style.font.caption)
                     elide: Text.ElideRight
                   }
                 }
@@ -1694,9 +1715,9 @@ Item {
                 Row {
                   id: trail
                   anchors.right: parent.right
-                  anchors.rightMargin: Style.space(8)
+                  anchors.rightMargin: root.scaledSpace(8)
                   anchors.verticalCenter: parent.verticalCenter
-                  spacing: Style.space(6)
+                  spacing: root.scaledSpace(6)
 
                   Text {
                     visible: tile.shortcut.length > 0
@@ -1707,7 +1728,7 @@ Item {
                     color: tile.textColor
                     opacity: tile.hasCursor ? 0.8 : root.mutedOpacity
                     font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
+                    font.pixelSize: root.scaledSize(Style.font.caption)
                     anchors.verticalCenter: parent.verticalCenter
                   }
 
@@ -1717,7 +1738,7 @@ Item {
                     color: tile.textColor
                     opacity: tile.hasCursor ? 0.8 : 0.36
                     font.family: root.fontFamily
-                    font.pixelSize: Style.font.heading
+                    font.pixelSize: root.scaledSize(Style.font.heading)
                     anchors.verticalCenter: parent.verticalCenter
                   }
                 }
@@ -1744,7 +1765,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.top: parent.top
-            height: Math.min(Style.space(24), parent.height / 2)
+            height: Math.min(root.scaledSpace(24), parent.height / 2)
             visible: opacity > 0
             opacity: gridFlick.contentHeight > gridFlick.height ? Math.max(0, Math.min(1, gridFlick.contentY / height)) : 0
             gradient: Gradient {
@@ -1757,7 +1778,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            height: Math.min(Style.space(24), parent.height / 2)
+            height: Math.min(root.scaledSpace(24), parent.height / 2)
             visible: opacity > 0
             opacity: gridFlick.contentHeight > gridFlick.height
               ? Math.max(0, Math.min(1, (gridFlick.contentHeight - gridFlick.height - gridFlick.contentY) / height))
@@ -1770,7 +1791,7 @@ Item {
 
           Column {
             anchors.centerIn: parent
-            spacing: Style.space(6)
+            spacing: root.scaledSpace(6)
             visible: displayModel.count === 0
 
             Text {
@@ -1778,7 +1799,7 @@ Item {
               color: root.selectedText
               opacity: 0.8
               font.family: root.fontFamily
-              font.pixelSize: Style.font.displayLarge
+              font.pixelSize: root.scaledSize(Style.font.displayLarge)
               horizontalAlignment: Text.AlignHCenter
               width: gridArea.width
             }
@@ -1788,7 +1809,7 @@ Item {
               color: root.foreground
               opacity: 0.7
               font.family: root.fontFamily
-              font.pixelSize: Style.font.subtitle
+              font.pixelSize: root.scaledSize(Style.font.subtitle)
               horizontalAlignment: Text.AlignHCenter
               width: gridArea.width
             }
@@ -1805,12 +1826,12 @@ Item {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             anchors.right: tipLabel.visible ? tipLabel.left : parent.right
-            anchors.rightMargin: Style.space(12)
+            anchors.rightMargin: root.scaledSpace(12)
             text: root.footerHint()
             color: root.foreground
             opacity: root.mutedOpacity
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: root.scaledSize(Style.font.caption)
             elide: Text.ElideRight
           }
 
@@ -1824,7 +1845,7 @@ Item {
             color: root.selectedText
             opacity: 0.8
             font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
+            font.pixelSize: root.scaledSize(Style.font.caption)
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignRight
           }
