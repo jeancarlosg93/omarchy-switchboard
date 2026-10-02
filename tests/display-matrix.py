@@ -35,6 +35,9 @@ with tempfile.TemporaryDirectory(prefix='switchboard-matrix-') as tmp:
     var info = JSON.parse(root.scaleInfo())
     info.screenWidth = panel.width
     info.cardX = card.x
+    info.anchorCaptured = root.centeredTop >= 0
+    info.searchY = card.y + searchBox.mapToItem(card, 0, 0).y
+    info.firstResultY = card.y + gridArea.mapToItem(card, 0, 0).y
     info.screenName = panel.screen ? panel.screen.name : ""
     info.gridHeight = gridArea.height
     info.contentHeight = gridFlick.contentHeight
@@ -50,6 +53,8 @@ with tempfile.TemporaryDirectory(prefix='switchboard-matrix-') as tmp:
     return JSON.stringify(info)
   }
   function testLastRow() {
+    // Isolate the keyboard navigation check from host-pointer hover events.
+    pointerGate.threshold = 1e9
     root.disarmPointer()
     root.cursorActive = true
     root.selectedIndex = Math.max(0, displayModel.count - 1)
@@ -67,6 +72,7 @@ ShellRoot {
     target: "test"
     function open(payload: string): void { launcher.open(payload) }
     function filter(query: string): void { launcher.setFilter(query) }
+    function dismiss(): void { launcher.close() }
     function layout(): string { return launcher.testLayout() }
     function last(): void { launcher.testLastRow() }
   }
@@ -110,20 +116,34 @@ ShellRoot {
                             payload={'mode':scenario,'prompt':'Display layout test','width':500,
                                      'options':['\tItem '+str(i)+'\tDetail text' for i in range(60)]}
                         else: payload={'menu': 'apps' if scenario=='apps' else 'root'}
+                        ipc('dismiss')
                         ipc('open',json.dumps(payload))
-                        if scenario=='search': ipc('filter','scr')
+                        opening=wait_for(lambda i: alignment!='center' or i['anchorCaptured'])
                         time.sleep(.14)
+                        opening=layout()
+                        transition_failures=[]
+                        if scenario=='search':
+                            # Exercise growth, shrinkage, empty results, and clearing
+                            # without closing: final geometry alone misses eye travel.
+                            for query in ['s','sc','scr','__no_such_result__','s','scr','']:
+                                ipc('filter',query); time.sleep(.10)
+                                transition=layout()
+                                if alignment=='center' and (abs(transition['searchY']-opening['searchY'])>.5 or abs(transition['firstResultY']-opening['firstResultY'])>.5):
+                                    transition_failures.append('typing moved search or first-result position')
+                                if transition['cardY']+transition['cardHeight']>transition['screenHeight']+.5 or transition['footerBottom']>transition['cardHeight']+.5:
+                                    transition_failures.append('typing overflowed screen or clipped footer')
+                            ipc('filter','scr'); time.sleep(.10)
                         info=layout()
                         if info['rows'] and scenario!='input':
                             ipc('last'); time.sleep(.16); info=layout()
                             if info['selectedIndex']!=info['rows']-1:
                                 ipc('last'); time.sleep(.16); info=layout()
-                        failures=[]
+                        failures=list(set(transition_failures))
                         if info['screenName']!=OUTPUT: failures.append('wrong screen')
                         if info['cardY']<0 or info['cardY']+info['cardHeight']>info['screenHeight']+.5: failures.append('card outside screen')
                         if info['cardWidth']>info['screenWidth']: failures.append('card too wide')
                         if abs(info['cardX']+info['cardWidth']/2-info['screenWidth']/2)>.5: failures.append('not horizontally centered')
-                        if alignment=='center' and abs(info['cardY']+info['cardHeight']/2-info['screenHeight']/2)>.5: failures.append('not centered')
+                        if alignment=='center' and abs(opening['cardY']+opening['cardHeight']/2-opening['screenHeight']/2)>.5: failures.append('not centered on opening')
                         if info['footerBottom']>info['cardHeight']+.5: failures.append('footer clipped')
                         if scenario!='input' and info['rows']:
                             if info['gridHeight']<=0: failures.append('no list viewport')

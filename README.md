@@ -94,7 +94,7 @@ base; the card still fits within the screen and long menus scroll. With no bar
 entry, the original size is used. Restart the shell once after installing this
 version so its new JavaScript module is loaded; subsequent scale changes apply live.
 
-To keep the card centered vertically as its content changes, add
+To center the card vertically when it opens, add
 `verticalAlignment: "center"` to the same entry:
 
 ```json
@@ -103,10 +103,12 @@ To keep the card centered vertically as its content changes, add
 
 Omit `verticalAlignment` or use `"top"` to preserve the original fixed upper
 position. On compact screens, the upper offset shrinks only when needed to
-leave room for the controls and one complete row. Centered mode grows equally
-upward and downward, stays centered
-while searching or opening submenus, and scrolls when the screen is full.
-The setting applies live and also covers select/input dialogs.
+leave room for the controls and one complete row. Centered mode captures the
+initial top edge, then keeps the search field and
+first result stationary while typing or navigating submenus. Results expand
+downward and scroll when they reach the bottom of the screen. Closing and
+reopening centers the launcher again. A display or scale-setting change also
+repositions it. The setting applies live and covers select/input dialogs.
 
 ## Keys
 

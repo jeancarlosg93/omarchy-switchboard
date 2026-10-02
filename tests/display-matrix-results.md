@@ -2,7 +2,7 @@
 
 Verified on 2026-10-02 with Hyprland 0.56.2 and Quickshell 0.3.1.
 
-The actual Switchboard QML was instantiated in a separate Quickshell process on a temporary Hyprland headless output. Its configuration used a temporary home directory and the default Omarchy style metrics. The harness only adds output selection and layout inspection methods to a temporary copy of the plugin; production geometry and navigation functions run unchanged.
+The actual Switchboard QML was instantiated in a separate Quickshell process on a temporary Hyprland headless output. Its configuration used a temporary home directory and the default Omarchy style metrics. The harness only adds output selection and layout inspection methods to a temporary copy of the plugin; production geometry and navigation functions run unchanged. The keyboard check raises the test instance’s pointer-movement threshold to prevent host-pointer hover events from changing the selection during measurement.
 
 ## Matrix
 
@@ -19,14 +19,15 @@ The actual Switchboard QML was instantiated in a separate Quickshell process on 
 | 1920x1080 | 200% | 960 × 540 |
 | 1280x720 | 160% | 800 × 450 |
 
-Each display ran launcher scales `1`, `1.2`, and `2`, both `top` and `center` alignment, and root menu, search, long application list, 60-item selection dialog, and input dialog: **300 scenarios passed**. A separate 30-case compact rerun also passed and supplied screenshots for visual inspection.
+Each display ran launcher scales `1`, `1.2`, and `2`, both `top` and `center` alignment, and root menu, search, long application list, 60-item selection dialog, and input dialog: **300 scenarios passed**. Each search scenario also types through `s`, `sc`, `scr`, an unmatched query, backspacing, and clearing without closing the launcher. Across centered configurations, 210 query transitions verify that the search field and first-result position remain stationary, including empty results. Initial centering is checked separately from those transitions.
 
-Assertions check the named output and effective dimensions, horizontal centering, vertical centering when selected, screen bounds, footer placement, and full selected-row visibility after navigating to the end of the list. Configuration changes apply through the real watched shell.json reader. The output coexisted with two physical 2560 × 1440 displays at scale 1, exercising rendering with mixed output scales.
+Assertions check the named output and effective dimensions, horizontal centering, vertical centering on opening, screen bounds, footer placement, and full selected-row visibility after navigating to the end of the list. Configuration changes apply through the real watched shell.json reader. The output coexisted with two physical 2560 × 1440 displays at scale 1, exercising rendering with mixed output scales.
 
 ## Regressions found and fixed
 
 - The neighbouring-row scroll margin could hide part of the selected row when the viewport was narrow. The margin now shrinks to the available room.
 - A large launcher with the original top offset could leave insufficient room for a detailed search/selection row. The viewport minimum now uses the actual row height, and the top offset shrinks only when needed to fit the controls and one complete row.
+- Recomputing centered position for every result-list height made the search field and first result jump during typing. Centered mode now captures its top edge on opening and grows downward, with enough room reserved for a detailed row. Empty-result height is constrained to the remaining space as well.
 
 The compact visual check confirmed that a detailed selected row, search field, and footer remain usable at an effective 800 × 450 with launcher scale 2.
 

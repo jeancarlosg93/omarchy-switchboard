@@ -216,7 +216,10 @@ Item {
   }
   property bool deleteConfirmOpen: false
   property var deleteTarget: null
-  onOpenedChanged: if (!opened) { deleteConfirmOpen = false; deleteTarget = null }
+  onOpenedChanged: {
+    if (!opened) { deleteConfirmOpen = false; deleteTarget = null }
+    root.scheduleCentering()
+  }
 
   // ------------------------------------------------------------------ theme
   //
@@ -257,15 +260,40 @@ Item {
   readonly property int chromeHeight: contentMargin * 2 + headerHeight + contentSpacing + searchHeight
     + (root.mode === "input" ? 0 : contentSpacing) + contentSpacing + footerHeight
   readonly property int gridHeight: root.mode === "input" ? 0
-    : (displayModel.count === 0 ? root.emptyHeight : Math.min(root.gridContentHeight, root.availableGridHeight))
+    : Math.min(displayModel.count === 0 ? root.emptyHeight : root.gridContentHeight, root.availableGridHeight)
   readonly property int availableGridHeight: {
     var serial = root.layoutSerial
-    // Symmetric: a full-height card leaves the same gap below as above.
-    var available = panel.height - panel.contentInset * 2 - root.chromeHeight
+    // Once centered, preserve the top edge and use the space below it.
+    var available = root.verticalAlignment === "center" && root.centeredTop >= 0
+      ? panel.height - root.centeredTop - Style.gapsOut - root.chromeHeight
+      : panel.height - panel.contentInset * 2 - root.chromeHeight
     if (root.dmenuActive && root.dmenuMaxHeight > 0) available = Math.min(available, root.scaledSpace(root.dmenuMaxHeight))
     return Math.max(root.tileHeight, available)
   }
   readonly property int cardHeight: root.chromeHeight + root.gridHeight
+
+  // Center once per opening, rather than chasing each search-result height.
+  property real centeredTop: -1
+
+  function scheduleCentering() {
+    root.centeredTop = -1
+    if (root.opened && root.verticalAlignment === "center") centerTimer.restart()
+  }
+
+  Timer {
+    id: centerTimer
+    interval: 0
+    onTriggered: {
+      if (!panel.visible || panel.height <= 0 || root.verticalAlignment !== "center") return
+      // Reserve enough room for a detailed row even if the initial menu is
+      // short. This keeps the search field fixed on compact screens too.
+      var minimumContent = root.chromeHeight + (root.mode === "input" ? 0 : root.detailTileHeight)
+      var maximumTop = Math.max(Style.gapsOut, panel.height - Style.gapsOut - minimumContent)
+      root.centeredTop = Math.max(Style.gapsOut, Math.min((panel.height - card.height) / 2, maximumTop))
+    }
+  }
+  onVerticalAlignmentChanged: root.scheduleCentering()
+  onUiScaleChanged: root.scheduleCentering()
 
   // ---------------------------------------------------------------- helpers
 
@@ -1361,9 +1389,12 @@ Item {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     exclusionMode: ExclusionMode.Ignore
 
-    // Preserve the fixed top edge by default. Centered mode reserves only
-    // screen-edge gaps, letting the card grow equally upward and downward.
-    // Keep the height limit independent of card.y to avoid a binding loop.
+    onVisibleChanged: if (visible && root.centeredTop < 0) centerTimer.restart()
+    onHeightChanged: root.scheduleCentering()
+    onScreenChanged: root.scheduleCentering()
+
+    // Before the opening position is captured, centered mode reserves only
+    // edge gaps. Keep the height limit independent of card.y to avoid a loop.
     readonly property int contentInset: {
       if (root.verticalAlignment === "center") return Style.gapsOut
       // On compact outputs, move the top edge only as far as needed to fit
@@ -1386,10 +1417,13 @@ Item {
     BorderSurface {
       id: card
       width: root.cardWidth
-      height: Math.min(root.cardHeight, panel.height - Style.gapsOut - panel.contentInset)
+      height: Math.min(root.cardHeight, panel.height - Style.gapsOut
+        - (root.verticalAlignment === "center" && root.centeredTop >= 0 ? root.centeredTop : panel.contentInset))
       radius: root.cornerRadius
       anchors.horizontalCenter: parent.horizontalCenter
-      y: root.verticalAlignment === "center" ? (panel.height - height) / 2 : panel.contentInset
+      y: root.verticalAlignment === "center"
+        ? (root.centeredTop >= 0 ? root.centeredTop : (panel.height - height) / 2)
+        : panel.contentInset
       color: root.background
       borderSpec: root.borderSpec
       padding: root.contentMargin
