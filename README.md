@@ -13,7 +13,7 @@ need it.
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/jeancarlosg93/omarchy-switchboard.git
+omarchy plugin add https://github.com/krall12/omarchy-switchboard.git
 omarchy plugin enable krall.switchboard
 ```
 
@@ -87,12 +87,12 @@ spacing, tiles, and card width. It leaves the bar button and other shell panels
 unchanged. Omit `scale` or use `1` for the original size. Numeric values are
 limited to `0.75`–`2`; invalid values fall back to `1`.
 
-The setting applies live through Omarchy's injected bar configuration, with a
-watched read of the same `shell.json` as a fallback on older shells. There is
+The setting applies live by watching the same `shell.json` and reading it
+through the launcher's existing bounded file helper. There is
 no separate Switchboard configuration file. Existing theme sizes remain the
 base; the card still fits within the screen and long menus scroll. With no bar
 entry, the original size is used. Restart the shell once after installing this
-fork so its new JavaScript module is loaded; subsequent scale changes apply live.
+version so its new JavaScript module is loaded; subsequent scale changes apply live.
 
 To keep the card centered vertically as its content changes, add
 `verticalAlignment: "center"` to the same entry:
@@ -188,12 +188,13 @@ tail -f /run/user/$UID/quickshell/by-pid/*/log.log
 ```
 
 The knobs are at the top of `Switchboard.qml`: tile height and gap, card
-width, and `cardTop` (where the card hangs from — the same distance is kept
-below it, so a full launcher sits centred).
+width, and the original 20% top offset in the surface section. Prefer the
+`scale` and `verticalAlignment` settings above for user configuration.
+
+Run the configuration tests with `node tests/ui-scale.cjs` (Node.js is needed
+only for tests). For runtime checks, use
+`omarchy-shell shell call krall.switchboard scaleInfo ""`.
 
 ## License
 
 MIT. `MenuModel.js` is from Omarchy, also MIT.
-
-Run the configuration tests with `node tests/ui-scale.cjs`. For runtime checks,
-use `omarchy-shell shell call krall.switchboard scaleInfo ""`.

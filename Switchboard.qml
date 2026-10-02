@@ -61,6 +61,7 @@ Item {
   function refresh() {
     root.loadMenuFile(defaultMenuProc, root.defaultMenuPath)
     root.loadMenuFile(userMenuProc, root.userMenuPath)
+    root.loadMenuFile(scaleConfigProc, scaleConfigFile.path)
     root.loadKeybinds(true)
     root.loadStatus()
     return "ok"
@@ -89,30 +90,34 @@ Item {
     return Qt.hsla((hash >>> 0) % 360 / 360, 0.48, 0.28, 1)
   }
 
-  // Read the existing shell.json entry; no separate plugin config file.
-  // Some shell versions do not inject a persistent API into menu plugins.
-  property var fallbackBarConfig: ({})
-  readonly property var scaleBarConfig: root.shell && root.shell.barConfig
-    ? root.shell.barConfig : root.fallbackBarConfig
-  readonly property real uiScale: UiScale.fromBarConfig(root.scaleBarConfig, "krall.switchboard")
+  // Read the existing shell.json entry through the same bounded helper as
+  // menu definitions. No separate plugin config file or shell API is needed.
+  property var launcherBarConfig: ({})
+  readonly property real uiScale: UiScale.fromBarConfig(root.launcherBarConfig, "krall.switchboard")
 
-  readonly property string verticalAlignment: UiScale.alignmentFromBarConfig(root.scaleBarConfig, "krall.switchboard")
+  readonly property string verticalAlignment: UiScale.alignmentFromBarConfig(root.launcherBarConfig, "krall.switchboard")
 
   function loadScaleConfig(text) {
     try {
       var config = text.length <= 1024 * 1024 ? JSON.parse(text) : null
-      root.fallbackBarConfig = config && config.version === 1 ? config.bar || ({}) : ({})
-    } catch (e) { root.fallbackBarConfig = ({}) }
+      root.launcherBarConfig = config && config.version === 1 ? config.bar || ({}) : ({})
+    } catch (e) { root.launcherBarConfig = ({}) }
   }
 
   FileView {
     id: scaleConfigFile
     path: Quickshell.env("HOME") + "/.config/omarchy/shell.json"
+    preload: false
     watchChanges: true
     printErrors: false
-    onLoaded: root.loadScaleConfig(text())
-    onFileChanged: reload()
-    onLoadFailed: root.fallbackBarConfig = ({})
+    onFileChanged: scaleReadTimer.restart()
+  }
+
+  Timer {
+    id: scaleReadTimer
+    interval: 250
+    running: true
+    onTriggered: root.loadMenuFile(scaleConfigProc, scaleConfigFile.path)
   }
 
   function scaledSize(px) { return UiScale.size(px, root.uiScale) }
@@ -120,12 +125,14 @@ Item {
 
   // Row positions are stored in the model rather than bound to tileHeight.
   // Coalesce changes so live resizing also relays out search and select rows.
-  onTileHeightChanged: Qt.callLater(root.relayoutDisplay)
-  onTileGapChanged: Qt.callLater(root.relayoutDisplay)
-  onDividerHeightChanged: Qt.callLater(root.relayoutDisplay)
+  onTileHeightChanged: relayoutTimer.restart()
+  onTileGapChanged: relayoutTimer.restart()
+  onDividerHeightChanged: relayoutTimer.restart()
 
-  function relayoutDisplay() {
-    if (root.rowsLoaded) root.rebuildDisplay()
+  Timer {
+    id: relayoutTimer
+    interval: 0
+    onTriggered: if (root.rowsLoaded) root.rebuildDisplay()
   }
 
   // ---------------------------------------------------------------- tunables
@@ -1189,6 +1196,16 @@ Item {
   }
 
   BoundedProcess {
+    id: scaleConfigProc
+    property bool reloadPending: false
+    onExited: function(exitCode) {
+      root.loadScaleConfig(scaleConfigProc.ok && exitCode === 0 ? scaleConfigProc.collected : "")
+      scaleConfigProc.collected = ""
+      if (scaleConfigProc.reloadPending) root.loadMenuFile(scaleConfigProc, scaleConfigFile.path)
+    }
+  }
+
+  BoundedProcess {
     id: userMenuProc
     property bool reloadPending: false
     onExited: function(exitCode) {
@@ -1232,6 +1249,7 @@ Item {
     onTriggered: {
       root.loadMenuFile(defaultMenuProc, root.defaultMenuPath)
       root.loadMenuFile(userMenuProc, root.userMenuPath)
+      root.loadMenuFile(scaleConfigProc, scaleConfigFile.path)
       root.loadKeybinds(true)
       root.loadStatus()
     }
