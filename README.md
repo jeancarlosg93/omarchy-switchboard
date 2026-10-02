@@ -102,7 +102,9 @@ To keep the card centered vertically as its content changes, add
 ```
 
 Omit `verticalAlignment` or use `"top"` to preserve the original fixed upper
-position. Centered mode grows equally upward and downward, stays centered
+position. On compact screens, the upper offset shrinks only when needed to
+leave room for the controls and one complete row. Centered mode grows equally
+upward and downward, stays centered
 while searching or opening submenus, and scrolls when the screen is full.
 The setting applies live and also covers select/input dialogs.
 
@@ -194,6 +196,15 @@ width, and the original 20% top offset in the surface section. Prefer the
 Run the configuration tests with `node tests/ui-scale.cjs` (Node.js is needed
 only for tests). For runtime checks, use
 `omarchy-shell shell call krall.switchboard scaleInfo ""`.
+
+For the integration display matrix, run `python tests/display-matrix.py` from
+an active Hyprland session with Omarchy, Quickshell, and grim installed. It
+creates an isolated launcher with temporary configuration on a temporary
+headless output, checks actual QML geometry, and removes the output afterward.
+Physical monitor modes and your shell.json are not changed. Results and selected
+screenshots are written to `/tmp/switchboard-matrix-results` (override with
+`SWITCHBOARD_TEST_ARTIFACTS`). See [the display test report](tests/display-matrix-results.md)
+for coverage and limitations.
 
 ## License
 

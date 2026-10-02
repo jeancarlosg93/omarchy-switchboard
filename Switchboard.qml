@@ -263,7 +263,7 @@ Item {
     // Symmetric: a full-height card leaves the same gap below as above.
     var available = panel.height - panel.contentInset * 2 - root.chromeHeight
     if (root.dmenuActive && root.dmenuMaxHeight > 0) available = Math.min(available, root.scaledSpace(root.dmenuMaxHeight))
-    return Math.max(root.baseTileHeight, available)
+    return Math.max(root.tileHeight, available)
   }
   readonly property int cardHeight: root.chromeHeight + root.gridHeight
 
@@ -788,7 +788,8 @@ Item {
     var top = r.cellY
     var bottom = r.cellY + root.tileHeight
     // Keep a sliver of the neighbouring row visible so the fold reads as one.
-    var reach = Math.round(root.tileHeight * 0.4)
+    var reach = Math.max(0, Math.min(Math.round(root.tileHeight * 0.4),
+      Math.floor((gridFlick.height - root.tileHeight) / 2)))
     var maxY = Math.max(0, gridFlick.contentHeight - gridFlick.height)
     if (bottom + reach > gridFlick.contentY + gridFlick.height)
       gridFlick.contentY = Math.min(bottom + reach - gridFlick.height, maxY)
@@ -1363,8 +1364,14 @@ Item {
     // Preserve the fixed top edge by default. Centered mode reserves only
     // screen-edge gaps, letting the card grow equally upward and downward.
     // Keep the height limit independent of card.y to avoid a binding loop.
-    readonly property int contentInset: root.verticalAlignment === "center"
-      ? Style.gapsOut : Math.max(Style.gapsOut, Math.round(height * 0.20))
+    readonly property int contentInset: {
+      if (root.verticalAlignment === "center") return Style.gapsOut
+      // On compact outputs, move the top edge only as far as needed to fit
+      // the controls and one complete row, including search-result details.
+      var minimumContent = root.chromeHeight + (root.mode === "input" ? 0 : root.tileHeight)
+      var maximumInset = Math.max(Style.gapsOut, Math.floor((height - minimumContent) / 2))
+      return Math.min(Math.max(Style.gapsOut, Math.round(height * 0.20)), maximumInset)
+    }
 
     Rectangle {
       anchors.fill: parent
